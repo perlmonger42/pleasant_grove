@@ -1,6 +1,6 @@
 require 'elastic_tabstops'
 
-module PostgreSQL
+module PleasantGrove
 
   # A Column is a result-row hash extended with ColumnExtension.
   #
@@ -22,12 +22,13 @@ module PostgreSQL
   # of a Table, extended with:
   #
   #   @by_name: a hash mapping column names to Column objects.
-  #   self[name]: returns the Column object for the named column.
+  #   named[name]: returns the Column object for the named column.
   #
   class Columns < Result
+    attr_reader :by_name
+
     def initialize(table)
-      puts "initializing Columns";
-      super(table.postgresql.exec_params <<~"EOF");
+      super(table.db_connection.exec_params <<~"EOF");
         SELECT
           column_name,
           is_nullable as nullable,
@@ -37,19 +38,21 @@ module PostgreSQL
       EOF
 
       @by_name = @rows.inject({}) do |all_columns, column_data|
-        column = column_data.clone.tap do |c|
-          c['nullable'] = c['nullable'] == 'YES' ? true : false;
-          c.extend(ColumnExtension);
-          c.table = table;
-        end;
-        all_columns[column_data['column_name']] = column;
+        c = column_data;
+        c['nullable'] = c['nullable'] == 'YES' ? true : false;
+        c.extend(ColumnExtension);
+        c.table = table;
+        all_columns[c['column_name']] = c;
         all_columns
       end
-      puts "by_name: #{@by_name.inspect}"
     end
 
-    def [](index)
-      @by_name.fetch(index)
+    def named(column_name)
+      @by_name[column_name];
+    end
+
+    def has_column?(column_name)
+      @by_name.key? column_name;
     end
   end
 end

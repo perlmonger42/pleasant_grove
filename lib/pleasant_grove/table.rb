@@ -1,22 +1,32 @@
 require 'elastic_tabstops'
 
-module PostgreSQL
+module PleasantGrove
 
   # A Table is a result-row hash extended with TableExtension.
   #
-  # For a given Table t, t == t.postgresql.tables[t['table_name']].
+  # For a given Table t, t == t.db_connection.tables[t['table_name']].
   #
   # For the most part, it looks just like a Result row for the query
   # that accesses metadata about tables in a database, extended with:
   #
-  #   @postgresql: refers to the PostgreSQL object that ran the query.
-  #   columns: method that gets the Table's Columns.
+  #   @db_connection: refers to the PleasantGrove object that ran the query.
+  #   columns: returns a list of the Table's Columns.
+  #   column(name): returns the named Column object.
+  #   has_column?(name): answers whether the named column exists.
   #
   module TableExtension
-    attr_accessor :postgresql
+    attr_accessor :db_connection
 
     def columns
       @columns ||= Columns.new(self);
+    end
+
+    def column(column_name)
+      columns.by_name[column_name];
+    end
+
+    def has_column?(column_name)
+      columns.by_name.key? column_name;
     end
   end
 
@@ -26,12 +36,13 @@ module PostgreSQL
   # It is a Result set for the query that accesses metadata about the tables
   # of a database, extended with:
   #
-  #   @by_name: a hash mapping table names to Table objects.
-  #   self[name]: returns the Table object for the named table.
+  #   by_name: a hash from table names to Table objects.
   #
   class Tables < Result
-    def initialize(postgresql)
-      super(postgresql.exec_params <<~'EOF');
+    attr_accessor :by_name;
+
+    def initialize(db_connection)
+      super(db_connection.exec_params <<~'EOF');
         SELECT
           table_catalog as database_name,
           table_schema as schema,
@@ -43,17 +54,11 @@ module PostgreSQL
       EOF
 
       @by_name = @rows.inject({}) do |all_tables, table_data|
-        table = table_data.clone.tap do |t|
-          t.extend(TableExtension);
-          t.postgresql = postgresql;
-        end
-        all_tables[table_data['table_name']] = table;
+        table_data.extend(TableExtension);
+        table_data.db_connection = db_connection;
+        all_tables[table_data['table_name']] = table_data;
         all_tables
       end
-    end
-
-    def [](index)
-      @by_name.fetch(index)
     end
   end
 end

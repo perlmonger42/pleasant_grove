@@ -1,7 +1,6 @@
 require 'forwardable'
-require 'elastic_tabstops'
 
-module PostgreSQL
+module PleasantGrove
 
   # A Result contains a list of rows representing the result of an SQL query.
   class Result
@@ -18,22 +17,13 @@ module PostgreSQL
       @rows = r.map { |row| row.clone  }
     end
 
-    def show
+    def show(numbered: false, title: nil)
       if $Verbose
         puts "Response: status = #{@status}, " +
              "row-count = #{@row_count}, " +
              "column-count = #{@col_count}";
       end
-
-      out = ElasticTabstops::make_stream($stdout);
-      out.puts "Seq\t" + @field_names.join("\t");
-      out.puts "===\t" + @field_names.map { |name| "=" * name.size }.join("\t")
-      row_number = 0;
-      @rows.each do |row|
-        row_number = row_number + 1;
-        out.puts "#{row_number}\t#{row.values.join("\t")}";
-      end
-      out.flush;
+      PleasantGrove::show(@rows, numbered: numbered, title: title);
     end
   end
 end
