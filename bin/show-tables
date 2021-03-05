@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require 'pleasant_grove'
+$Verbose = 0;
+
+def db
+  return $DatabaseConnection if $DatabaseConnection;
+
+  # host_name defaults to ENV['PGHOST']
+  # database_name defaults to ENV['PGNAME'] || ENV['PGDATABASE']
+  # port defaults to ENV['PGPORT']
+  # user defaults to ENV['PGUSER']
+  # password defaults to ENV['PGPASS'] || ENV['PGPASSWORD']
+  #
+  # ($PGDATABASE and $PGPASSWORD are the names psql uses; $PGNAME and $PGPASS
+  # are just nice shorthand provided by pleasant_grove.)
+
+  # default to localhost and gdpr_local
+  ENV['PGHOST'] ||= 'localhost';
+  ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
+  $DatabaseConnection  = PleasantGrove::Connection.new(verbose: $Verbose)
+end
+
+def main
+  db.tables.show;
+  puts;
+
+  cold_storage = ['job', 'jobglobalstatus', 'job_message', 'request_payload'];
+  cold_storage.each do |t|
+    db.table(t).columns.show(title: t);
+    puts;
+  end
+rescue PG::Error => e
+  puts e.message
+ensure
+  db.close if db;
+end
+
+main;

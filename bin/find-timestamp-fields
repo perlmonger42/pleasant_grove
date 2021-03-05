@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require 'pleasant_grove'
+$Verbose = 0;
+
+def find_timestamp_columns(db)
+  timestamp_columns = []
+  db.tables.each do |table|
+    table_name = table['table_name'];
+    table.columns.each do |column|
+      column_name = column['column_name'],
+      if /timestamp/.match?(column['type'])
+        timestamp_columns.push({
+          'table_name': table_name,
+          'column_name': column['column_name'],
+          'type': column['type'],
+        })
+      end
+    end
+  end
+  timestamp_columns
+end
+
+def main
+  # host_name defaults to ENV['PGHOST']
+  # database_name defaults to ENV['PGNAME'] || ENV['PGDATABASE']
+  # port defaults to ENV['PGPORT']
+  # user defaults to ENV['PGUSER']
+  # password defaults to ENV['PGPASS'] || ENV['PGPASSWORD']
+  #
+  # ($PGDATABASE and $PGPASSWORD are the names psql uses; $PGNAME and $PGPASS
+  # are just nice shorthand provided by pleasant_grove.)
+
+  # default to localhost and gdpr_local
+  ENV['PGHOST'] ||= 'localhost';
+  ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
+  db = PleasantGrove::Connection.new(verbose: $Verbose)
+  PleasantGrove.show find_timestamp_columns(db);
+rescue PG::Error => e
+  puts e.message
+ensure
+  db.close if db;
+end
+
+main;

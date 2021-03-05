@@ -1,0 +1,99 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require 'pleasant_grove'
+$Verbose = 1;
+
+def show_table_sizes(db)
+  db.query(<<~"EOF").show(title: "Table Sizes"); puts;
+    select
+      pg_size_pretty(pg_database_size('#{db.database_name}'))
+        as #{db.database_name},
+      pg_size_pretty(pg_total_relation_size('job'))
+        as job,
+      pg_size_pretty(pg_total_relation_size('job_message'))
+        as job_message,
+      pg_size_pretty(pg_total_relation_size('jobglobalstatus'))
+        as jobglobalstatus,
+      pg_size_pretty(pg_total_relation_size('request_payload'))
+        as request_payload;
+  EOF
+end
+
+def show_row_counts(db)
+  if db.database_name != 'gdpr_local'
+    # The exact-row-count query is too expensive to run anywhere but in a
+    # (small) localhost database, so if this script is invoked for a non-local
+    # database, use a row-count estimate instead of actual counts.
+    title = puts "===== Row Count Estimates ====="
+    query_string = <<~"END_OF_STRING"
+      SELECT
+        relname, reltuples::bigint AS row_count_estimate,
+        pg_total_relation_size(relname::text) as size,
+        pg_size_pretty(pg_total_relation_size(relname::text)) as pretty_size
+      FROM pg_class
+      WHERE relname IN (
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_name NOT LIKE 'pg_%'
+          AND table_schema IN ('public')
+          AND table_type != 'VIEW'
+      )
+      ORDER BY size DESC
+      ;
+    END_OF_STRING
+  else
+    # This query relies on a whole lot of the inner workings of PostgreSQL.
+    # It comes from a comment on a StackOverflow answer at
+    # https://stackoverflow.com/questions/2596670/how-do-you-find-the-row-count-for-all-your-tables-in-postgres#comment-98883743
+    title = "===== Exact Row Counts ====="
+    query_string = <<~'END_OF_STRING'
+      WITH tbl AS (
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_name NOT LIKE 'pg_%'
+          AND table_schema IN ('public')
+          AND table_type != 'VIEW'
+      )
+      SELECT
+        -- tbl,
+        table_schema,
+        table_name,
+        pg_total_relation_size(table_name) as size,
+        pg_size_pretty(pg_total_relation_size(table_name)) as pretty_size,
+        (xpath(
+          '/row/c/text()',
+          query_to_xml(
+            format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+            false, true, '')
+         ))[1]::text::int AS rows_n
+      FROM tbl
+      ORDER BY size DESC;
+    END_OF_STRING
+  end
+
+  db.query(query_string).show(title: title); puts;
+end
+
+def main
+  # host_name defaults to ENV['PGHOST']
+  # database_name defaults to ENV['PGNAME'] || ENV['PGDATABASE']
+  # port defaults to ENV['PGPORT']
+  # user defaults to ENV['PGUSER']
+  # password defaults to ENV['PGPASS'] || ENV['PGPASSWORD']
+  #
+  # ($PGDATABASE and $PGPASSWORD are the names psql uses; $PGNAME and $PGPASS
+  # are just nice shorthand provided by pleasant_grove.)
+
+  # default to localhost and gdpr_local
+  ENV['PGHOST'] ||= 'localhost';
+  ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
+  db = PleasantGrove::Connection.new(verbose: $Verbose)
+  show_row_counts(db);
+  show_table_sizes(db);
+rescue PG::Error => e
+  puts e.message
+ensure
+  db.close if db;
+end
+
+main;

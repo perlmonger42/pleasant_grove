@@ -7,19 +7,40 @@ $Verbose ||= 0;
 
 module PleasantGrove
   class Connection
-    attr_reader :host_name, :database_name;
+    attr_reader :host_name, :database_name, :port, :user;
 
     def die(msg)
       throw msg
     end
 
-    def initialize(host_name: nil, database_name: nil, verbose: false)
-      @host_name = host_name || ENV['PGHOST'] ||
-        die("host_name required");
-      @database_name = database_name || ENV['PGDATABASE'] ||
-        die("database_name required");
+    # Values are required for `host_name` and `database_name`, though they may
+    # come from environment variables. Most arguments default to an environment
+    # variable's value, as shown in the function header.
+    def initialize(
+        host_name:     ENV['PGHOST'],
+        database_name: ENV['PGNAME'] || ENV['PGDATABASE'],
+        port:          ENV['PGPORT'],
+        user:          ENV['PGUSER'],
+        password:      ENV['PGPASS'] || ENV['PGPASSWORD'],
+        verbose: false
+      )
 
-      @conn = ::PG::Connection.open(:dbname => database_name);
+      $Verbose = verbose
+      @host_name     = host_name     || die("host_name (or $PGHOST value) required");
+      @database_name = database_name || die("database_name (or $PGDATABASE value) required");
+      @port = port;
+      @user = user;
+
+      if $Verbose
+         puts "host name:     #{@host_name}"
+         puts "database name: #{@database_name}"
+      end
+      connection_args = { host: @host_name, dbname: @database_name };
+      connection_args[:port] = @port if @port;
+      connection_args[:user] = @user if @user;
+      connection_args[:password] = password if password;
+
+      @conn = ::PG::Connection.open(**connection_args);
       if verbose
         puts "Talking to #{@database_name} on #{@host_name} " +
              "(pg version #{@conn.server_version})";

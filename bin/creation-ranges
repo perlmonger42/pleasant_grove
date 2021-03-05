@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require 'pleasant_grove'
+require 'pleasant_grove/result'
+
+$Verbose ||= 0
+
+def creation_timestamps(db)
+  timestamps = [];
+  db.tables.each do |table|
+    next unless table.has_column?('created_at');
+    table_name = table['table_name'];
+    begin
+      q = <<~"EOF";
+        SELECT
+          '#{table_name}' as table_name,
+          MIN(created_at) as "earliest created_at",
+          MAX(created_at) as "latest created_at"
+        FROM #{table_name};
+      EOF
+      db.exec_params(q).each do |row|
+        timestamps.push row.clone;
+      end
+    end
+  end
+  timestamps;
+end
+
+def main
+  # host_name defaults to ENV['PGHOST']
+  # database_name defaults to ENV['PGNAME'] || ENV['PGDATABASE']
+  # port defaults to ENV['PGPORT']
+  # user defaults to ENV['PGUSER']
+  # password defaults to ENV['PGPASS'] || ENV['PGPASSWORD']
+  #
+  # ($PGDATABASE and $PGPASSWORD are the names psql uses; $PGNAME and $PGPASS
+  # are just nice shorthand provided by pleasant_grove.)
+
+  # default to localhost and gdpr_local
+  ENV['PGHOST'] ||= 'localhost';
+  ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
+  db = PleasantGrove::Connection.new(verbose: $Verbose)
+
+  db.show creation_timestamps(db), numbered: true, title: 'Creation Timestamps';
+  puts;
+
+  db.query('SELECT version()').show;
+  puts;
+rescue PG::Error => e
+  puts e.message
+ensure
+  db.close if db
+end
+
+main;
+
+__END__
+Talking to gdpr_local on localhost (pg version 110008)
+
+===== Creation Timestamps =====
+Table            Earliest                   Latest Error
+dataset
+job              2020-07-06 14:41:11.654    2020-08-18 10:15:01.012
+job2
+job_old
+jobglobalstatus  2020-07-06 14:41:11.654-06 2020-08-18 10:15:01.012-06
+region_config    2018-11-15 23:43:27.824477 2018-11-15 23:43:38.949483
+regulations      2020-03-20 22:40:29.345253 2020-03-20 22:40:29.345253
+user_preferences 2020-08-10 14:23:24.308427 2020-08-10 14:23:24.308427
