@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 require 'bundler/setup'
 require 'pleasant_grove'
-$Verbose = 0;
+$Verbosity = 0;
 
 def find_timestamp_columns(db)
   timestamp_columns = []
@@ -34,7 +34,7 @@ def main
   # default to localhost and gdpr_local
   ENV['PGHOST'] ||= 'localhost';
   ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
-  db = PleasantGrove::Connection.new(verbose: $Verbose)
+  db = PleasantGrove::Connection.new(verbosity: $Verbosity)
   PleasantGrove.show find_timestamp_columns(db);
 rescue PG::Error => e
   puts e.message

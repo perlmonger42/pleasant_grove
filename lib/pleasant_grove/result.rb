@@ -7,6 +7,7 @@ module PleasantGrove
     include Enumerable
     extend Forwardable
     def_delegators :@rows, :each, :<<
+    attr_reader :status, :row_count, :col_count, :field_names, :rows
 
     def initialize(query_result)
       r = query_result;
@@ -17,13 +18,13 @@ module PleasantGrove
       @rows = r.map { |row| row.clone  }
     end
 
-    def show(numbered: false, title: nil)
-      if $Verbose
+    def show(numbered: false, title: nil, max_rows: nil)
+      if $PleasantGroveVerbosity > 0
         puts "Response: status = #{@status}, " +
              "row-count = #{@row_count}, " +
              "column-count = #{@col_count}";
       end
-      PleasantGrove::show(@rows, numbered: numbered, title: title);
+      PleasantGrove::show(@rows, numbered: numbered, title: title, max_rows: max_rows);
     end
   end
 end

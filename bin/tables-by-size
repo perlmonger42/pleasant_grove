@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 require 'bundler/setup'
 require 'pleasant_grove'
-$Verbose = 1;
+$Verbosity = 1;
 
 def show_table_sizes(db)
   db.query(<<~"EOF").show(title: "Table Sizes"); puts;
@@ -87,7 +87,7 @@ def main
   # default to localhost and gdpr_local
   ENV['PGHOST'] ||= 'localhost';
   ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
-  db = PleasantGrove::Connection.new(verbose: $Verbose)
+  db = PleasantGrove::Connection.new(verbosity: $Verbosity)
   show_row_counts(db);
   show_table_sizes(db);
 rescue PG::Error => e

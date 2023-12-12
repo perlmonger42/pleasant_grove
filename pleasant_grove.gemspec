@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'pleasant_grove'
-  s.version     = '0.0.8.4'
-  s.date        = '2021-03-04'
+  s.version     = '0.0.8.6'
+  s.date        = '2021-03-20'
   s.summary     = "PostgreSQL helpers"
   s.description = "Classes for representing PostgreSQL tables, columns, and query results"
   s.authors     = ["Thom Boyer"]

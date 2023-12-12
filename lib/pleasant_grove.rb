@@ -3,7 +3,7 @@ require "pleasant_grove/result.rb"
 require "pleasant_grove/column.rb"
 require "pleasant_grove/table.rb"
 
-$Verbose ||= 0;
+$PleasantGroveVerbosity ||= 0;
 
 module PleasantGrove
   class Connection
@@ -22,16 +22,16 @@ module PleasantGrove
         port:          ENV['PGPORT'],
         user:          ENV['PGUSER'],
         password:      ENV['PGPASS'] || ENV['PGPASSWORD'],
-        verbose: false
+        verbosity:     0
       )
 
-      $Verbose = verbose
+      $PleasantGroveVerbosity = verbosity
       @host_name     = host_name     || die("host_name (or $PGHOST value) required");
       @database_name = database_name || die("database_name (or $PGDATABASE value) required");
       @port = port;
       @user = user;
 
-      if $Verbose
+      if $PleasantGroveVerbosity > 0
          puts "host name:     #{@host_name}"
          puts "database name: #{@database_name}"
       end
@@ -41,7 +41,7 @@ module PleasantGrove
       connection_args[:password] = password if password;
 
       @conn = ::PG::Connection.open(**connection_args);
-      if verbose
+      if verbosity > 0
         puts "Talking to #{@database_name} on #{@host_name} " +
              "(pg version #{@conn.server_version})";
         puts;
@@ -55,7 +55,7 @@ module PleasantGrove
     end
 
     def exec_params(str, args=[])
-      if $Verbose > 0
+      if $PleasantGroveVerbosity > 0
         puts "Query: #{str.strip}"
         puts "Args: #{args.inspect}";
       end;
@@ -89,14 +89,14 @@ module PleasantGrove
       tables.by_name.key? table_name;
     end
 
-    def show(grid, numbered: false, title: nil)
-      PleasantGrove.show(grid, numbered: numbered, title: title);
+    def show(grid, numbered: false, title: nil, max_rows: nil)
+      PleasantGrove.show(grid, numbered: numbered, title: title, max_rows: max_rows);
     end
 
     # Display a table of data.
     # Expects grid to be a list of hashes.
     # The column names are taken from the first hash.
-    def PleasantGrove.show(grid, numbered: false, title: nil)
+    def PleasantGrove.show(grid, numbered: false, title: nil, max_rows: nil)
       puts "===== #{title} =====" unless title.nil?
       return if grid.empty?
 
@@ -110,8 +110,14 @@ module PleasantGrove
       out.puts field_names.map { |name| "-" * name.size }.join("\t");
 
       row_number = 0;
+      max_rows = grid.size if max_rows.nil?
       grid.each do |row|
         row_number = row_number + 1;
+        if row_number >= max_rows && max_rows < grid.size then
+          out.flush
+          out.puts "(#{row_number-1} rows shown, #{grid.size - row_number + 1} of #{grid.size} were hidden)"
+          break
+        end
         out.print row_number, "\t" if numbered;
         out.puts "#{row.values_at(*field_names).join("\t")}";
       end

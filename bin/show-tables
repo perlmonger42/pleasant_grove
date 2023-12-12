@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 require 'bundler/setup'
 require 'pleasant_grove'
-$Verbose = 0;
+$Verbosity = 0;
 
 def db
   return $DatabaseConnection if $DatabaseConnection;
@@ -18,7 +18,7 @@ def db
   # default to localhost and gdpr_local
   ENV['PGHOST'] ||= 'localhost';
   ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
-  $DatabaseConnection  = PleasantGrove::Connection.new(verbose: $Verbose)
+  $DatabaseConnection  = PleasantGrove::Connection.new(verbosity: $Verbosity)
 end
 
 def main

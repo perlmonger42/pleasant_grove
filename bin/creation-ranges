@@ -3,7 +3,7 @@ require 'bundler/setup'
 require 'pleasant_grove'
 require 'pleasant_grove/result'
 
-$Verbose ||= 0
+$Verbosity ||= 0
 
 def creation_timestamps(db)
   timestamps = [];
@@ -39,7 +39,7 @@ def main
   # default to localhost and gdpr_local
   ENV['PGHOST'] ||= 'localhost';
   ENV['PGNAME'] ||= ENV['PGDATABASE'] || 'gdpr_local';
-  db = PleasantGrove::Connection.new(verbose: $Verbose)
+  db = PleasantGrove::Connection.new(verbosity: $Verbosity)
 
   db.show creation_timestamps(db), numbered: true, title: 'Creation Timestamps';
   puts;
