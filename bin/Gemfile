@@ -4,6 +4,6 @@ source "https://rubygems.org"
 
 git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 
-gem "pleasant_grove", "~> 0.0.8.6"
+gem 'pleasant_grove', '~> 0.0.8.6', path: '..'
 gem "pry"
 gem "pry-byebug"
